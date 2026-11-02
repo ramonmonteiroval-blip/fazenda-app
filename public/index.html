@@ -1,0 +1,464 @@
+<title>Contas da Fazenda</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2F5A3A">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icone.svg">
+<style>
+/* Layout: uma coluna, abas no topo, formulário e listas empilhados. */
+:root{--bg:#F4F3EE;--panel:#FFFFFF;--ink:#1D2A1F;--muted:#667263;--line:#D8DCD2;--pos:#2E6B3A;--neg:#A23A2B;--warn:#8A6410;--accent:#2F5A3A;--accent-ink:#FFFFFF;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101712;--panel:#18231B;--ink:#E6ECE3;--muted:#8E9B8B;--line:#2B3A2E;--pos:#7CD08F;--neg:#F08A7B;--warn:#E9C27A;--accent:#5E9A6C;--accent-ink:#0F1A12;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#101712;--panel:#18231B;--ink:#E6ECE3;--muted:#8E9B8B;--line:#2B3A2E;--pos:#7CD08F;--neg:#F08A7B;--warn:#E9C27A;--accent:#5E9A6C;--accent-ink:#0F1A12;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-block:14px 40px;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:14px;min-width:0}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+h1{margin:0;font-size:19px}
+.status{font-size:12px;color:var(--muted)}
+.status::before{content:"● ";color:var(--pos)}
+.status.off::before{color:var(--warn)}
+button,input,select{font:inherit;font-size:15px;min-height:42px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 10px;min-width:0}
+button{cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button.small{min-height:32px;padding:4px 10px;font-size:13px}
+button.danger{color:var(--neg)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+h2{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+label{display:grid;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.full{grid-column:1/-1}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.msg{min-height:20px;font-size:13px;color:var(--neg)}
+.msg.ok{color:var(--pos)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.card .l{font-size:12px;color:var(--muted)}
+.card .v{font:600 18px ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin-top:2px}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.warn{color:var(--warn)}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .d{font-weight:600;overflow-wrap:anywhere}
+.row .m{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.row .val{font:600 15px ui-monospace,Menlo,Consolas,monospace;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font-size:11px;padding:1px 6px;border:1px solid var(--line);border-radius:4px;color:var(--muted);margin-left:4px}
+.tag.late{color:var(--neg);border-color:var(--neg)}
+.empty{color:var(--muted);text-align:center;padding:18px 6px}
+.hide{display:none!important}
+.bar{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.bar:last-child{border-bottom:0}
+.bar .n{font-weight:600;overflow-wrap:anywhere}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Contas da Fazenda</h1>
+    <span class="status" id="status">conectando…</span>
+    <button id="btnConectar" class="small primary" type="button">Conectar</button>
+  </header>
+
+  <section class="panel hide" id="codigoBox">
+    <h2>Código de acesso</h2>
+    <form id="formCodigo" class="full">
+      <label class="full">Digite o código que vocês combinaram<input id="codigo" type="password" autocomplete="off" required></label>
+      <button class="primary full" type="submit">Entrar</button>
+    </form>
+  </section>
+
+  <nav class="tabs" aria-label="Menu principal">
+    <button id="tLancar" class="small" aria-pressed="true">Lançar</button>
+    <button id="tExtrato" class="small" aria-pressed="false">Extrato</button>
+    <button id="tRelatorio" class="small" aria-pressed="false">Relatório</button>
+  </nav>
+
+  <!-- LANÇAR -->
+  <section class="panel" id="secLancar">
+    <h2>Novo lançamento</h2>
+    <form id="form" autocomplete="off">
+      <div class="seg full">
+        <button type="button" id="tDespesa" class="small" aria-pressed="true">Despesa</button>
+        <button type="button" id="tReceita" class="small" aria-pressed="false">Receita</button>
+      </div>
+      <label>Valor (R$)<input id="valor" inputmode="decimal" placeholder="0,00" required></label>
+      <label>Data<input id="data" type="date" required></label>
+      <label class="full">Categoria<select id="cat" required></select></label>
+      <label class="full">Descrição<input id="desc" placeholder="Ex.: 2 sacos de ração" required></label>
+      <label>Quem pagou / recebeu<select id="quem"><option>Ramon</option><option>Vicente</option></select></label>
+      <label>Situação<select id="sit"></select></label>
+      <button class="primary full" type="submit">Salvar lançamento</button>
+      <div class="msg full" id="msg" role="status"></div>
+    </form>
+  </section>
+
+  <!-- EXTRATO -->
+  <section class="panel hide" id="secExtrato">
+    <h2>Extrato</h2>
+    <div id="pendTitle" class="status" style="margin-bottom:6px"></div>
+    <div id="pend"></div>
+    <div id="list" style="margin-top:12px"></div>
+  </section>
+
+  <!-- RELATÓRIO -->
+  <section class="hide" id="secRelatorio" style="display:grid;gap:14px">
+    <div class="cards" id="cards"></div>
+    <div class="panel">
+      <h2>Rateio 50/50 (despesas pagas)</h2>
+      <div id="rateio"></div>
+    </div>
+    <div class="panel">
+      <h2>Receitas, separadas</h2>
+      <div id="receitas"></div>
+    </div>
+    <div class="panel">
+      <h2>Despesas por categoria</h2>
+      <div id="categorias"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var COL = "fazenda_lancamentos";
+  var CACHE_KEY = "fazenda_cache_v1";
+  var FILA_KEY = "fazenda_fila_v1";
+
+  var DESPESAS = [
+    "Aquisição de animais", "Despesas com pessoal e encargos", "Aquisição de ração",
+    "Medicamentos para o rebanho", "Aquisição de ferramentas", "Manutenção de máquinas",
+    "Adubos", "Sementes", "Energia", "Internet", "Gastos com frete", "Combustível",
+    "Locação de máquinas", "Impostos e taxas"
+  ];
+  var RECEITAS = ["Venda de gado", "Aluguel de pastagem"];
+  var SIT_DESPESA = [["pago", "Paga"], ["a_pagar", "A pagar"]];
+  var SIT_RECEITA = [["recebido", "Recebida"], ["a_receber", "A receber"]];
+
+  var db = null;
+  var rows = [];
+  var tipo = "despesa";
+  var busy = false;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function brl(v) { return Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function hoje() { var t = new Date(); return t.getFullYear() + "-" + pad(t.getMonth() + 1) + "-" + pad(t.getDate()); }
+  function fmt(iso) { var p = String(iso || "").split("-"); return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : "sem data"; }
+  function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function msg(t, ok) { var m = $("msg"); m.textContent = t || ""; m.className = "msg full" + (ok ? " ok" : ""); }
+  function valorDe(s) {
+    s = String(s || "").trim().replace(/\s/g, "");
+    if (s.indexOf(",") > -1) s = s.replace(/\./g, "").replace(",", ".");
+    return Math.round(Number(s) * 100) / 100;
+  }
+  function soma(arr) { return arr.reduce(function (a, r) { return a + Number(r.valor || 0); }, 0); }
+
+  /* ---------- Menu ---------- */
+  var telas = { Lancar: "secLancar", Extrato: "secExtrato", Relatorio: "secRelatorio" };
+  function mostrar(nome) {
+    Object.keys(telas).forEach(function (k) {
+      $(telas[k]).classList.toggle("hide", k !== nome);
+      $("t" + k).setAttribute("aria-pressed", String(k === nome));
+    });
+  }
+  $("tLancar").addEventListener("click", function () { mostrar("Lancar"); });
+  $("tExtrato").addEventListener("click", function () { mostrar("Extrato"); });
+  $("tRelatorio").addEventListener("click", function () { mostrar("Relatorio"); });
+
+  /* ---------- Tipo e categorias ---------- */
+  function preencherCategorias() {
+    var lista = tipo === "despesa" ? DESPESAS : RECEITAS;
+    $("cat").innerHTML = lista.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("");
+    var sits = tipo === "despesa" ? SIT_DESPESA : SIT_RECEITA;
+    $("sit").innerHTML = sits.map(function (s) { return '<option value="' + s[0] + '">' + esc(s[1]) + "</option>"; }).join("");
+  }
+  function setTipo(t) {
+    tipo = t;
+    $("tDespesa").setAttribute("aria-pressed", String(t === "despesa"));
+    $("tReceita").setAttribute("aria-pressed", String(t === "receita"));
+    preencherCategorias();
+  }
+  $("tDespesa").addEventListener("click", function () { setTipo("despesa"); });
+  $("tReceita").addEventListener("click", function () { setTipo("receita"); });
+
+  /* ---------- Fila offline ---------- */
+  function lerFila() {
+    try { return JSON.parse(localStorage.getItem(FILA_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function gravarFila(f) {
+    try { localStorage.setItem(FILA_KEY, JSON.stringify(f)); } catch (e) {}
+  }
+  function pendentes() { return lerFila().length; }
+
+  function atualizarStatus(texto, off) {
+    var s = $("status");
+    var p = pendentes();
+    s.textContent = texto + (p ? " · " + p + " aguardando envio" : "");
+    s.classList.toggle("off", !!off);
+  }
+
+  async function enviarFila() {
+    var f = lerFila();
+    if (!f.length || !db) return;
+    var restante = [];
+    for (var i = 0; i < f.length; i++) {
+      try { await db.collection(COL).doc(f[i].id).set(f[i]); }
+      catch (e) { restante.push(f[i]); }
+    }
+    gravarFila(restante);
+    atualizarStatus("conectado", false);
+  }
+
+  async function conectar() {
+    atualizarStatus("conectando…", true);
+    if (!db) db = criarApi();
+    if (!getToken()) { pedirCodigo(); atualizarStatus("código de acesso necessário", true); return false; }
+    try {
+      await api("GET", "/api/health");
+    } catch (e) { atualizarStatus("sem conexão com o servidor", true); return false; }
+    await enviarFila();
+    return true;
+  }
+
+  /* ---------- Acesso ao servidor ---------- */
+  function getToken() { try { return localStorage.getItem("fazenda_token") || ""; } catch (e) { return ""; } }
+  function setToken(t) { try { localStorage.setItem("fazenda_token", t); } catch (e) {} }
+  function pedirCodigo() {
+    var box = $("codigoBox");
+    if (box) box.classList.remove("hide");
+  }
+  async function api(metodo, caminho, corpo) {
+    var opts = { method: metodo, headers: { "X-App-Token": getToken() } };
+    if (corpo) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(corpo); }
+    var r = await fetch(caminho, opts);
+    if (r.status === 401) { setToken(""); pedirCodigo(); throw new Error("codigo"); }
+    if (!r.ok) throw new Error("http " + r.status);
+    return r.status === 204 ? null : r.json();
+  }
+  // Mesma interface que usávamos com a base do Claude, agora falando com o servidor.
+  function criarApi() {
+    return {
+      collection: function () {
+        return {
+          doc: function (id) {
+            return {
+              set: function (d) { return api("PUT", "/api/lancamentos/" + id, d); },
+              update: function (d) { return api("PATCH", "/api/lancamentos/" + id, Object.assign({ atualizado: new Date().toISOString() }, d)); },
+              delete: function () { return api("DELETE", "/api/lancamentos/" + id); }
+            };
+          },
+          onSnapshot: function (ok, err) {
+            var rodar = function () {
+              api("GET", "/api/lancamentos").then(function (resp) {
+                ok({ docs: resp.lancamentos.map(function (r) {
+                  return { id: r.id, exists: true, data: function () { return r; } };
+                }) });
+              }).catch(function (e) { if (err) err(e); });
+            };
+            rodar();
+            return setInterval(rodar, 15000);
+          }
+        };
+      }
+    };
+  }
+
+  /* ---------- Gravação ---------- */
+  $("form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if (busy) return;
+    var valor = valorDe($("valor").value);
+    if (!(valor > 0)) { msg("Informe um valor maior que zero."); return; }
+    var descricao = $("desc").value.trim();
+    if (!descricao) { msg("Informe a descrição."); return; }
+    var doc = {
+      id: genId(), tipo: tipo, valor: valor, descricao: descricao,
+      categoria: $("cat").value, data: $("data").value || hoje(),
+      quem: $("quem").value, situacao: $("sit").value, criado: new Date().toISOString()
+    };
+    busy = true;
+    try {
+      var enviado = false;
+      if (navigator.onLine && db) {
+        try { await db.collection(COL).doc(doc.id).set(doc); enviado = true; } catch (err) { enviado = false; }
+      }
+      if (enviado) {
+        msg("Lançamento salvo na base.", true);
+      } else {
+        var f = lerFila(); f.push(doc); gravarFila(f);
+        msg("Salvo neste aparelho. Envia quando houver conexão (ou toque em Conectar).", true);
+      }
+      $("valor").value = ""; $("desc").value = "";
+      $("valor").focus();
+      atualizarStatus(enviado ? "conectado" : "sem conexão", !enviado);
+    } finally { busy = false; }
+  });
+
+  /* ---------- Lista e relatório ---------- */
+  function linhaExtrato(r, tag) {
+    var desp = r.tipo === "despesa";
+    var acao = r.situacao === "pago" || r.situacao === "recebido" ? "Desfazer" : (desp ? "Paguei" : "Recebi");
+    return '<div class="row"><div>' +
+      '<div class="d">' + esc(r.descricao) + "</div>" +
+      '<div class="m">' + esc(fmt(r.data)) + " · " + esc(r.categoria || "") + " · " + esc(r.quem || "") + " " + tag + "</div>" +
+      '<div class="acts"><button class="small" data-baixa="' + esc(r.id) + '">' + acao + '</button>' +
+      '<button class="small danger" data-del="' + esc(r.id) + '">Excluir</button></div></div>' +
+      '<div class="val ' + (desp ? "neg" : "pos") + '">' + (desp ? "−" : "+") + brl(r.valor) + "</div></div>";
+  }
+
+  function renderizar() {
+    var hojeStr = hoje();
+    var despesas = rows.filter(function (r) { return r.tipo === "despesa"; });
+    var receitas = rows.filter(function (r) { return r.tipo === "receita"; });
+    var despPagas = despesas.filter(function (r) { return r.situacao === "pago"; });
+    var recRecebidas = receitas.filter(function (r) { return r.situacao === "recebido"; });
+    var aPagar = soma(despesas.filter(function (r) { return r.situacao === "a_pagar"; }));
+    var aReceber = soma(receitas.filter(function (r) { return r.situacao === "a_receber"; }));
+    var atrasados = rows.filter(function (r) {
+      return (r.situacao === "a_pagar" || r.situacao === "a_receber") && r.data < hojeStr;
+    }).length;
+
+    /* Rateio: cada um paga/recebe metade. Positivo = a receber. */
+    var totDesp = soma(despPagas), totRec = soma(recRecebidas);
+    var pagouR = soma(despPagas.filter(function (r) { return r.quem === "Ramon"; }));
+    var pagouV = soma(despPagas.filter(function (r) { return r.quem === "Vicente"; }));
+    var recR = soma(recRecebidas.filter(function (r) { return r.quem === "Ramon"; }));
+    var recV = soma(recRecebidas.filter(function (r) { return r.quem === "Vicente"; }));
+    var saldoR = (pagouR - totDesp / 2) - (recR - totRec / 2);
+    var saldoV = -saldoR;
+    var saldoTexto;
+    if (Math.abs(saldoR) < 0.005) saldoTexto = "Contas em dia. Ninguém deve nada.";
+    else if (saldoR > 0) saldoTexto = "Vicente deve " + brl(saldoR) + " a Ramon.";
+    else saldoTexto = "Ramon deve " + brl(-saldoR) + " a Vicente.";
+
+    $("cards").innerHTML =
+      card("Despesas pagas", brl(totDesp), "neg") +
+      card("Receitas recebidas", brl(totRec), "pos") +
+      card("A pagar", brl(aPagar), "warn") +
+      card("A receber", brl(aReceber), "pos") +
+      card("Atrasados", String(atrasados), atrasados ? "neg" : "");
+
+    $("rateio").innerHTML =
+      linhaRateio("Ramon pagou", pagouR) +
+      linhaRateio("Vicente pagou", pagouV) +
+      linhaRateio("Cada um deve (metade)", totDesp / 2) +
+      '<div class="bar"><div class="n">Resultado</div><div class="' + (saldoR === 0 ? "" : "warn") + '">' + esc(saldoTexto) + "</div></div>";
+
+    $("receitas").innerHTML = RECEITAS.map(function (nome) {
+      var lista = receitas.filter(function (r) { return r.categoria === nome; });
+      var total = soma(lista.filter(function (r) { return r.situacao === "recebido"; }));
+      var prev = soma(lista.filter(function (r) { return r.situacao === "a_receber"; }));
+      var r = lista.filter(function (x) { return x.situacao === "recebido" && x.quem === "Ramon"; });
+      var v = lista.filter(function (x) { return x.situacao === "recebido" && x.quem === "Vicente"; });
+      return '<div class="bar"><div class="n">' + esc(nome) + "</div><div>" +
+        "Recebido " + brl(total) + " · a receber " + brl(prev) +
+        '<div class="m">Ramon ' + brl(soma(r)) + " · Vicente " + brl(soma(v)) + "</div></div></div>";
+    }).join("");
+
+    $("categorias").innerHTML = DESPESAS.map(function (nome) {
+      var t = soma(despesas.filter(function (r) { return r.categoria === nome; }));
+      return t ? '<div class="bar"><div class="n">' + esc(nome) + "</div><div>" + brl(t) + "</div></div>" : "";
+    }).join("") || '<div class="empty">Nenhuma despesa lançada ainda.</div>';
+
+    /* Pendências (a pagar / a receber) */
+    var pend = rows.filter(function (r) { return r.situacao === "a_pagar" || r.situacao === "a_receber"; })
+      .sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });
+    $("pendTitle").textContent = "Pendências: " + pend.length;
+    $("pend").innerHTML = pend.length ? pend.map(function (r) {
+      return linhaExtrato(r, r.data < hojeStr ? '<span class="tag late">atrasado</span>' : '<span class="tag">previsto</span>');
+    }).join("") : '<div class="empty">Nenhuma pendência.</div>';
+
+    var lista = rows.slice().sort(function (a, b) { return String(b.data).localeCompare(String(a.data)); });
+    $("list").innerHTML = lista.length ? lista.map(function (r) {
+      return linhaExtrato(r, '<span class="tag">' + esc(r.tipo === "despesa" ? "despesa" : "receita") + "</span>");
+    }).join("") : '<div class="empty">Nenhum lançamento ainda. Use “Lançar”.</div>';
+  }
+
+  function card(l, v, cls) { return '<div class="card"><div class="l">' + esc(l) + '</div><div class="v ' + cls + '">' + esc(v) + "</div></div>"; }
+  function linhaRateio(l, v) { return '<div class="bar"><div class="n">' + esc(l) + "</div><div>" + brl(v) + "</div></div>"; }
+
+  /* ---------- Ações da lista ---------- */
+  document.addEventListener("click", async function (e) {
+    var t = e.target;
+    if (!t.getAttribute) return;
+    var bid = t.getAttribute("data-baixa");
+    if (bid) {
+      var r = rows.filter(function (x) { return x.id === bid; })[0];
+      if (!r) return;
+      var novo = r.situacao === "pago" || r.situacao === "recebido"
+        ? (r.tipo === "despesa" ? "a_pagar" : "a_receber")
+        : (r.tipo === "despesa" ? "pago" : "recebido");
+      await gravarAlteracao(bid, { situacao: novo });
+      return;
+    }
+    var did = t.getAttribute("data-del");
+    if (did && window.confirm("Excluir este lançamento?")) {
+      await gravarAlteracao(did, null);
+    }
+  });
+
+  async function gravarAlteracao(id, dados) {
+    if (!db || !navigator.onLine) { msg("Sem conexão: a alteração não foi salva. Tente de novo ao conectar."); return; }
+    try {
+      if (dados) await db.collection(COL).doc(id).update(dados);
+      else await db.collection(COL).doc(id).delete();
+      msg("Atualizado.", true);
+    } catch (e) { msg("Não atualizou. Tente de novo."); }
+  }
+
+  /* ---------- Cache local e tempo real ---------- */
+  function lerCache() {
+    try { return JSON.parse(localStorage.getItem(CACHE_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function gravarCache(lista) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(lista)); } catch (e) {}
+  }
+
+  var timerAssinar = null;
+  async function assinar() {
+    if (!db) return;
+    if (timerAssinar) clearInterval(timerAssinar);
+    timerAssinar = db.collection(COL).onSnapshot(function (snap) {
+      rows = snap.docs.filter(function (d) { return d.exists; })
+        .map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+      gravarCache(rows);
+      atualizarStatus("conectado · " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }), false);
+      renderizar();
+    }, function () { atualizarStatus("sem leitura da base", true); });
+  }
+
+  $("formCodigo").addEventListener("submit", function (e) {
+    e.preventDefault();
+    setToken($("codigo").value.trim());
+    $("codigo").value = "";
+    $("codigoBox").classList.add("hide");
+    conectar().then(function (ok) { if (ok) assinar(); });
+  });
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  }
+
+  $("btnConectar").addEventListener("click", function () {
+    conectar().then(function (ok) { if (ok) assinar(); });
+  });
+
+  window.addEventListener("online", function () { conectar().then(function (ok) { if (ok) assinar(); }); });
+  window.addEventListener("offline", function () { atualizarStatus("sem conexão", true); });
+
+  $("data").value = hoje();
+  setTipo("despesa");
+  rows = lerCache();
+  renderizar();
+  atualizarStatus("carregando", true);
+  conectar().then(function (ok) { if (ok) assinar(); });
+})();
+</script>

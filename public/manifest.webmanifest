@@ -1,0 +1,12 @@
+{
+  "name": "Contas da Fazenda",
+  "short_name": "Fazenda",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F3EE",
+  "theme_color": "#2F5A3A",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
