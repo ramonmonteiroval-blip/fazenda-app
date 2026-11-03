@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f5d3a">
+<title>Controle Fazenda</title>
+<style>
+  :root { --bg:#f5f3ee; --card:#fff; --fg:#1f2a22; --mut:#6b7468; --acc:#2f5d3a; --ruim:#b3261e; --bom:#1e7a3c; --linha:#dcd8cc; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#15191a; --card:#1f2526; --fg:#eef1ec; --mut:#9aa39a; --acc:#8fc79d; --ruim:#ff8a80; --bom:#7fd69a; --linha:#333b3c; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; padding:0 max(16px, env(safe-area-inset-right,0px)) 40px max(16px, env(safe-area-inset-left,0px)); }
+  [hidden] { display:none !important; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:14px 0; flex-wrap:wrap; }
+  h1 { font-size:20px; margin:0; color:var(--acc); }
+  button { font:inherit; border:0; border-radius:10px; padding:10px 14px; background:var(--acc); color:#fff; cursor:pointer; }
+  button.sec { background:transparent; color:var(--acc); border:1px solid var(--linha); }
+  button.perigo { background:var(--ruim); }
+  input, select { font:inherit; width:100%; padding:10px; border-radius:10px; border:1px solid var(--linha); background:var(--card); color:var(--fg); }
+  .card { background:var(--card); border:1px solid var(--linha); border-radius:14px; padding:14px; margin-bottom:14px; }
+  .saldo { font-size:17px; font-weight:600; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .mes { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .resumo { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center; }
+  .resumo b { display:block; font-size:16px; }
+  .mut { color:var(--mut); font-size:13px; }
+  form.novo { display:grid; gap:10px; }
+  .linha { display:grid; grid-template-columns:1fr auto; gap:6px; padding:10px 0; border-bottom:1px solid var(--linha); }
+  .linha:last-child { border-bottom:0; }
+  .acoes { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .acoes button { padding:6px 10px; font-size:13px; }
+  .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:99px; border:1px solid var(--linha); color:var(--mut); }
+  .receita { color:var(--bom); } .despesa { color:var(--ruim); }
+  .tela-login { text-align:center; padding:60px 10px; }
+  .erro { color:var(--ruim); font-size:13px; }
+</style>
+</head>
+<body>
+
+<div id="login" class="tela-login" hidden>
+  <h1>Controle Fazenda</h1>
+  <p class="mut">Acesso restrito aos dois sócios.</p>
+  <button id="btnEntrar">Entrar com Google</button>
+  <p id="erroLogin" class="erro"></p>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Controle Fazenda</h1>
+    <div><span id="usuario" class="mut"></span> <button class="sec" id="btnSair">Sair</button></div>
+  </header>
+
+  <div class="card">
+    <div class="mes">
+      <button class="sec" id="mesAnt">&larr;</button>
+      <b id="rotuloMes"></b>
+      <button class="sec" id="mesProx">&rarr;</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="resumo">
+      <div><span class="mut">Receitas</span><b class="receita" id="tRec"></b></div>
+      <div><span class="mut">Despesas</span><b class="despesa" id="tDes"></b></div>
+      <div><span class="mut">Resultado</span><b id="tRes"></b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="saldo" id="saldo"></div>
+    <div class="mut">Acerto geral (todos os meses, só o que já foi pago/recebido).</div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px">Novo lançamento</h3>
+    <form class="novo" id="form">
+      <div class="grid2">
+        <select id="tipo"><option value="despesa">Despesa</option><option value="receita">Receita</option></select>
+        <select id="situacao"><option value="realizado">Já pago/recebido</option><option value="previsto">A prazo (previsto)</option></select>
+      </div>
+      <input id="valor" inputmode="decimal" placeholder="Valor (ex: 1.250,00)" required>
+      <div class="grid2">
+        <select id="quem"><option>Ramon</option><option>Vicente</option></select>
+        <input id="data" type="date" required>
+      </div>
+      <select id="categoria"></select>
+      <input id="descricao" placeholder="Descrição (ex: ração do lote 3)" required>
+      <button type="submit">Salvar lançamento</button>
+      <p class="mut">Despesa: quem pagou. Receita: quem recebeu.</p>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 6px">Lançamentos do mês</h3>
+    <div id="lista"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import * as L from './logica.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDc6hX7oFYw9-G6h0qjGraxxPbQ4qqXhbo",
+  authDomain: "controle-fazenda-r-v.firebaseapp.com",
+  projectId: "controle-fazenda-r-v",
+  storageBucket: "controle-fazenda-r-v.firebasestorage.app",
+  messagingSenderId: "978557547049",
+  appId: "1:978557547049:web:72ee67c27bf04cdc1e6238"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = (id) => document.getElementById(id);
+const brl = (c) => L.formatarBRL(c);
+
+let mes = L.mesAtual();
+let todos = [];
+let unsub = null;
+
+// Preenche categorias e data padrão.
+$('categoria').innerHTML = L.CATEGORIAS.map((c) => `<option>${c}</option>`).join('');
+$('data').value = new Date().toISOString().slice(0, 10);
+
+$('btnEntrar').onclick = async () => {
+  $('erroLogin').textContent = '';
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (e) {
+    $('erroLogin').textContent = 'Não foi possível entrar: ' + (e.code || e.message);
+  }
+};
+$('btnSair').onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, (user) => {
+  if (unsub) { unsub(); unsub = null; }
+  if (!user) {
+    $('app').hidden = true; $('login').hidden = false; return;
+  }
+  const nome = L.SOCIOS[user.email];
+  if (!nome) {
+    // E-mail fora dos sócios: sai imediatamente.
+    signOut(auth);
+    $('erroLogin').textContent = 'Esta conta não tem acesso.';
+    $('login').hidden = false; $('app').hidden = true; return;
+  }
+  $('usuario').textContent = nome;
+  $('login').hidden = true; $('app').hidden = false;
+  // Tempo real: qualquer alteração aparece nos dois celulares.
+  unsub = onSnapshot(collection(db, 'lancamentos'), (snap) => {
+    todos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    render();
+  }, (err) => { $('lista').innerHTML = `<p class="erro">Sem permissão ou erro: ${err.code}</p>`; });
+});
+
+function render() {
+  $('rotuloMes').textContent = rotuloMes(mes);
+  const doMes = L.doMes(todos, mes).sort((a, b) => a.data.localeCompare(b.data));
+  const t = L.totaisMes(doMes);
+  $('tRec').textContent = brl(t.receitas);
+  $('tDes').textContent = brl(t.despesas);
+  $('tRes').textContent = brl(t.resultado);
+  $('saldo').textContent = L.quemDeveAQuem(L.calcularSaldo(todos));
+
+  $('lista').innerHTML = doMes.length ? doMes.map(linhaHtml).join('') : '<p class="mut">Nenhum lançamento neste mês.</p>';
+  document.querySelectorAll('[data-acao]').forEach((b) => b.onclick = acao);
+}
+
+function rotuloMes(ym) {
+  const [a, m] = ym.split('-').map(Number);
+  return new Date(a, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+function linhaHtml(l) {
+  const cls = l.tipo === 'receita' ? 'receita' : 'despesa';
+  const sit = l.situacao === 'realizado' ? 'realizado' : 'previsto';
+  const [y, m, d] = l.data.split('-');
+  const quemLabel = l.tipo === 'receita' ? `recebido por ${l.quem}` : `pago por ${l.quem}`;
+  return `<div class="linha">
+    <div><b>${escapar(l.descricao)}</b> <span class="pill">${sit}</span><div class="mut">${d}/${m} · ${escapar(l.categoria)} · ${quemLabel}</div></div>
+    <div class="${cls}"><b>${l.tipo === 'receita' ? '+' : '-'} ${brl(l.valor)}</b></div>
+    <div class="acoes" style="grid-column:1/-1">
+      <button class="sec" data-acao="situacao" data-id="${l.id}" data-sit="${sit}">${sit === 'realizado' ? 'Marcar como previsto' : 'Marcar como pago/recebido'}</button>
+      <button class="sec" data-acao="excluir" data-id="${l.id}">Excluir</button>
+    </div>
+  </div>`;
+}
+
+function escapar(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function acao(ev) {
+  const id = ev.currentTarget.dataset.id;
+  if (ev.currentTarget.dataset.acao === 'situacao') {
+    const novo = ev.currentTarget.dataset.sit === 'realizado' ? 'previsto' : 'realizado';
+    await updateDoc(doc(db, 'lancamentos', id), { situacao: novo });
+  } else if (ev.currentTarget.dataset.acao === 'excluir') {
+    if (confirm('Excluir este lançamento? Não tem volta.')) await deleteDoc(doc(db, 'lancamentos', id));
+  }
+}
+
+$('mesAnt').onclick = () => { mes = L.mudaMes(mes, -1); render(); };
+$('mesProx').onclick = () => { mes = L.mudaMes(mes, 1); render(); };
+
+$('form').onsubmit = async (e) => {
+  e.preventDefault();
+  const valor = L.parseMoeda($('valor').value);
+  if (valor <= 0) { alert('Informe um valor maior que zero.'); return; }
+  const dados = {
+    tipo: $('tipo').value,
+    situacao: $('situacao').value,
+    valor,
+    quem: $('quem').value,
+    data: $('data').value,
+    categoria: $('categoria').value,
+    descricao: $('descricao').value.trim(),
+    criadoEm: serverTimestamp(),
+    criadoPor: auth.currentUser.email,
+  };
+  await addDoc(collection(db, 'lancamentos'), dados);
+  $('valor').value = ''; $('descricao').value = '';
+  mes = dados.data.slice(0, 7);
+  render();
+};
+
+// Máscara de moeda: digita só números e formata 1.234,56.
+$('valor').addEventListener('input', (e) => {
+  const digitos = e.target.value.replace(/\D/g, '');
+  const c = parseInt(digitos || '0', 10);
+  e.target.value = (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+});
+</script>
+</body>
+</html>

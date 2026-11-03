@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function esSocio() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['ramonmonteiroval@gmail.com', 'vicentepmonteiro@gmail.com'];
+    }
+    match /{document=**} {
+      allow read, write: if esSocio();
+    }
+  }
+}
